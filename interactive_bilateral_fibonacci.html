@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Interactive tool for exploring the bilateral Fibonacci sequence and its cumulative, folded, braided, pair-fold, and pair-braid forms.">
+<title>Bilateral Fibonacci Sequence Overlay</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  body { margin:0; background:#0d0d0d; color:#e0e0e0; font-family:system-ui,sans-serif; display:flex; min-height:100vh; }
+  #controls { width:380px; padding:20px; background:#101010; border-right:1px solid #222; overflow-y:auto; height:100vh; box-sizing:border-box; }
+  #controls h1 { font-size:1.2rem; margin:0 0 16px; color:#fff; }
+  #controls h2 { font-size:1rem; margin:16px 0 8px; color:#bbb; border-bottom:1px solid #222; padding-bottom:4px; }
+  #controls label { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:0.9rem; cursor:pointer; }
+  #controls input[type="checkbox"] { accent-color:#e6a817; }
+  #controls input[type="number"] { width:80px; background:#1a1a1a; color:#e0e0e0; border:1px solid #444; padding:6px 8px; border-radius:4px; }
+  .button-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  button { background:#1a1a1a; color:#e0e0e0; border:1px solid #444; padding:8px 12px; border-radius:4px; cursor:pointer; font-size:0.85rem; }
+  button:hover { background:#222; }
+  #graph { flex:1; height:100vh; }
+  .note { font-size:0.75rem; color:#777; margin-top:16px; line-height:1.4; }
+  .seq-row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+  .seq-row input[type="color"] { width:36px; height:24px; padding:0; border:none; background:none; cursor:pointer; }
+  .seq-row select { background:#1a1a1a; color:#e0e0e0; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem; }
+</style>
+</head>
+<body>
+  <div id="controls">
+    <h1>Bilateral Fibonacci Overlay</h1>
+    <label>n (terms each side) <input type="number" id="nInput" min="1" max="30" value="8"></label>
+    <h2>Sequences</h2>
+    <div id="seqCheckboxes"></div>
+    <h2>Halves</h2>
+    <label><input type="checkbox" id="leftHalfToggle" checked> Show left half (index &lt; 0)</label>
+    <label><input type="checkbox" id="rightHalfToggle" checked> Show right half (index &gt; 0)</label>
+    <label><input type="checkbox" id="lowerHalfToggle" checked> Show lower half (value &lt; 0)</label>
+    <label><input type="checkbox" id="upperHalfToggle" checked> Show upper half (value &gt; 0)</label>
+    <h2>View</h2>
+    <label><input type="checkbox" id="mirrorToggle"> Show y-mirrors</label>
+    <div class="button-row">
+      <button id="symlogBtn">Symlog</button>
+    </BR>   <BR>
+      <button id="rotateBtn">Rotate 90°</button>
+      <button id="flipXBtn">Flip X</button>
+      <button id="flipYBtn">Flip Y</button>
+    
+      <input type="file" id="importFile" accept=".json" style="display:none">
+      <button id="downloadBtn">Download PNG</button>
+      <button id="updateBtn">Update</button>
+    </div>
+
+
+
+        <h2>Settings</h2>
+    <div class="button-row">
+  <button id="themeBtn">Dark / Light</button>
+
+    </div>
+        <h2>Save/Load</h2>
+    <div class="button-row">
+      <button id="exportBtn">Export JSON</button>
+      <button id="importBtn">Import JSON</button>
+    </div>
+    <div class="note">Click legend items to show/hide lines. Hover for values. Double-click plot or use home icon to reset zoom.</div>
+  </div>
+  <div id="graph"></div>
+  <script>
+    function fib(n){
+      n=parseInt(n,10); if(n===0)return 0;
+      const abs=Math.abs(n); let a=0,b=1;
+      for(let i=0;i<abs;i++)[a,b]=[b,a+b];
+      const fn=a; if(n>0)return fn;
+      return ((abs+1)%2===0)?fn:-fn;
+    }
+
+    function basePlus0(n){ if(n===0)return 0; if(n>0)return Math.pow(-1,n+1)*fib(n); return fib(Math.abs(n)); }
+    function baseMinus0(n){ return -basePlus0(n); }
+    function baseFib(n){ return fib(n); }
+    function baseFoldedZero(n){ if(n===0)return 0; if(Math.abs(n)%2===1)return 2*fib(n); return 0; }
+    function baseBraidedZero(n){ if(n===0)return 0; if(Math.abs(n)%2===0)return 2*fib(n); return 0; }
+
+    function bilateralCumulative(baseFn){
+      const vals={}; vals[0]=0; let total=0;
+      for(let k=1;k<=currentN;k++){ total+=baseFn(k); vals[k]=total; }
+      total=0;
+      for(let k=-1;k>=-currentN;k--){ total+=baseFn(k); vals[k]=total; }
+      return vals;
+    }
+
+    function pairFoldValue(n){ if(n<0)return NaN; if(n===0)return 0; return 2-fib(2*n-3); }
+    function pairBraidValue(n){ if(n<0)return NaN; if(n===0)return 0; return fib(2*n-2)+2; }
+
+    let currentN=8, rotationDeg=0, symlog=false, mirror=false, darkMode=true, flipX=false, flipY=false;
+    let showLeftHalf=true, showRightHalf=true, showLowerHalf=true, showUpperHalf=true;
+
+    const seqDefs={
+      '+0±':{base:basePlus0,color:'#e6a817',dash:'solid'},
+      '−0∓':{base:baseMinus0,color:'#4a6fa5',dash:'solid'},
+      'Σ(+0±)':{cumul:basePlus0,color:'#f2c94c',dash:'dash'},
+      'Σ(−0∓)':{cumul:baseMinus0,color:'#7fa3c8',dash:'dash'},
+      'Fib':{base:baseFib,color:'#c44',dash:'solid'},
+      'ΣFib':{cumul:baseFib,color:'#5aaf6a',dash:'dash'},
+      'folded₀':{base:baseFoldedZero,color:'#ff8c00',dash:'dot'},
+      'Σfold':{cumul:baseFoldedZero,color:'#b85c00',dash:'dash'},
+      'braided₀':{base:baseBraidedZero,color:'#7d6bb5',dash:'dot'},
+      'Σbraid':{cumul:baseBraidedZero,color:'#b07bd6',dash:'dash'},
+      'pair-fold':{pair:'fold',color:'#b8860b',dash:'solid'},
+      'pair-braid':{pair:'braid',color:'#ff69b4',dash:'solid'}
+    };
+
+    let selected=Object.fromEntries(Object.keys(seqDefs).map(k=>[k,!k.startsWith('pair-')]));
+    let appearance={};
+    for(const [name,def] of Object.entries(seqDefs)){
+      appearance[name]={color:def.color,dash:def.dash};
+    }
+
+    function symlogValue(v){ if(Number.isNaN(v))return NaN; if(v===0)return 0; return Math.sign(v)*Math.log10(1+Math.abs(v)); }
+    function getSymlogTicks(n){
+      const fibs=new Set(); let a=0,b=1;
+      while(a<=fib(n)){ fibs.add(a); [a,b]=[b,a+b]; }
+      const ticks=[...fibs].map(v=>[v,-v]).flat();
+      const unique=[...new Set(ticks)].filter(v=>Math.abs(v)<=fib(n));
+      const sorted=unique.sort((a,b)=>a-b);
+      return { tickvals:sorted.map(v=>symlogValue(v)), ticktext:sorted.map(v=>String(v)) };
+    }
+
+    function buildData(){
+      const xs=[];
+      for(let k=-currentN;k<=currentN;k++) xs.push(k);
+
+      const values={};
+      for(const [name,def] of Object.entries(seqDefs)){
+        if(def.base) values[name]=xs.map(k=>def.base(k));
+        else if(def.cumul){ const cumVals=bilateralCumulative(def.cumul); values[name]=xs.map(k=>cumVals[k]); }
+        else if(def.pair==='fold') values[name]=xs.map(k=>pairFoldValue(k));
+        else if(def.pair==='braid') values[name]=xs.map(k=>pairBraidValue(k));
+      }
+
+      const traces=[];
+      for(const [name,def] of Object.entries(seqDefs)){
+        if(!selected[name]) continue;
+        const rawVals=values[name];
+        const ap=appearance[name];
+
+        const createTrace=(useMirror=false)=>{
+          let xPlot=xs.slice();
+          let yPlot=rawVals.map((raw,i)=>{
+            const idx=xs[i];
+            const displayed=useMirror?-raw:raw;
+            if(Number.isNaN(displayed)) return NaN;
+            if(idx<0 && !showLeftHalf) return NaN;
+            if(idx>0 && !showRightHalf) return NaN;
+            if(displayed<0 && !showLowerHalf) return NaN;
+            if(displayed>0 && !showUpperHalf) return NaN;
+            return symlog?symlogValue(displayed):displayed;
+          });
+
+          xPlot=xs.map((idx,i)=>{
+            if(idx<0 && !showLeftHalf) return NaN;
+            if(idx>0 && !showRightHalf) return NaN;
+            return idx;
+          });
+
+          switch(rotationDeg){
+            case 90: [xPlot,yPlot]=[yPlot,xPlot]; break;
+            case 180:
+              xPlot=xPlot.map(v=>Number.isNaN(v)?NaN:-v);
+              yPlot=yPlot.map(v=>Number.isNaN(v)?NaN:-v);
+              break;
+            case 270:
+              xPlot=yPlot.map(v=>Number.isNaN(v)?NaN:-v);
+              yPlot=xPlot.map(v=>Number.isNaN(v)?NaN:-v);
+              break;
+          }
+          if(flipX) xPlot=xPlot.map(v=>Number.isNaN(v)?v:-v);
+          if(flipY) yPlot=yPlot.map(v=>Number.isNaN(v)?v:-v);
+
+          return {
+            x:xPlot,
+            y:yPlot,
+            mode:'lines',
+            name:useMirror?`${name} mirror`:name,
+            line:{color:ap.color,width:useMirror?1.4:2,dash:ap.dash},
+            opacity:useMirror?0.35:1,
+            legendgroup:name,
+            showlegend:!useMirror,
+            hovertemplate:`${name}<br>index=%{x}<br>value=%{y}<extra></extra>`,
+            connectgaps:false
+          };
+        };
+
+        traces.push(createTrace(false));
+        if(mirror) traces.push(createTrace(true));
+      }
+      return traces;
+    }
+
+    function getXAxisTitle(){ if(rotationDeg===0||rotationDeg===180)return'index'; return symlog?'value (symlog)':'value'; }
+    function getYAxisTitle(){ if(rotationDeg===0||rotationDeg===180)return symlog?'value (symlog)':'value'; return'index'; }
+
+    function buildLayout(data){
+      const tickInfo=symlog?getSymlogTicks(currentN):null;
+      const dark=darkMode?{
+        paper_bgcolor:'#0d0d0d',plot_bgcolor:'#0d0d0d',font:{color:'#e0e0e0'},
+        gridcolor:'#222',zerolinecolor:'#888',linecolor:'#444'
+      }:{
+        paper_bgcolor:'#ffffff',plot_bgcolor:'#ffffff',font:{color:'#111111'},
+        gridcolor:'#ddd',zerolinecolor:'#999',linecolor:'#ccc'
+      };
+      const layout={
+        template:darkMode?'plotly_dark':'plotly_white',
+        paper_bgcolor:dark.paper_bgcolor,plot_bgcolor:dark.plot_bgcolor,font:dark.font,
+        title:`Bilateral Fibonacci Sequence Overlay, n=${currentN}`,
+        hovermode:'closest',
+        legend:{orientation:'v',yanchor:'top',y:1,xanchor:'left',x:1.02},
+        xaxis:{title:getXAxisTitle(),type:'linear',gridcolor:dark.gridcolor,zerolinecolor:dark.zerolinecolor,linecolor:dark.linecolor,autorange:true},
+        yaxis:{title:getYAxisTitle(),type:'linear',gridcolor:dark.gridcolor,zerolinecolor:dark.zerolinecolor,linecolor:dark.linecolor,autorange:true},
+        margin:{l:60,r:80,t:50,b:50}
+      };
+      if(rotationDeg===0||rotationDeg===180){
+        if(!symlog){ layout.xaxis.dtick=1; layout.yaxis.dtick=1; }
+        else { layout.xaxis.dtick=1; if(tickInfo){ layout.yaxis.tickvals=tickInfo.tickvals; layout.yaxis.ticktext=tickInfo.ticktext; } }
+      } else {
+        if(!symlog){ layout.yaxis.dtick=1; layout.xaxis.dtick=1; }
+        else { layout.yaxis.dtick=1; if(tickInfo){ layout.xaxis.tickvals=tickInfo.tickvals; layout.xaxis.ticktext=tickInfo.ticktext; } }
+      }
+
+      let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,hasX=false,hasY=false;
+      for(const trace of data){
+        for(let i=0;i<trace.x.length;i++){
+          const xv=trace.x[i], yv=trace.y[i];
+          if(typeof xv==='number'&&!Number.isNaN(xv)){ if(xv<minX)minX=xv; if(xv>maxX)maxX=xv; hasX=true; }
+          if(typeof yv==='number'&&!Number.isNaN(yv)){ if(yv<minY)minY=yv; if(yv>maxY)maxY=yv; hasY=true; }
+        }
+      }
+      if(hasX){ const padX=Math.max((maxX-minX)*0.05,0.5); layout.xaxis.range=[minX-padX,maxX+padX]; }
+      if(hasY){ const padY=Math.max((maxY-minY)*0.05,0.5); layout.yaxis.range=[minY-padY,maxY+padY]; }
+      return layout;
+    }
+
+    function render(){
+      const data=buildData();
+      const layout=buildLayout(data);
+      Plotly.react('graph',data,layout);
+      saveState();
+    }
+
+    function getConfig(){
+      return {
+        currentN,
+        rotationDeg,
+        symlog,
+        mirror,
+        darkMode,
+        flipX,
+        flipY,
+        showLeftHalf,
+        showRightHalf,
+        showLowerHalf,
+        showUpperHalf,
+        selected,
+        appearance
+      };
+    }
+
+    function saveState(){
+      try { localStorage.setItem('bilateralFibConfig', JSON.stringify(getConfig())); } catch(e) {}
+    }
+
+    function loadState(){
+      try {
+        const raw=localStorage.getItem('bilateralFibConfig');
+        if(!raw) return;
+        const c=JSON.parse(raw);
+        Object.assign({currentN,rotationDeg,symlog,mirror,darkMode,flipX,flipY,showLeftHalf,showRightHalf,showLowerHalf,showUpperHalf,selected,appearance}, c);
+      } catch(e) {}
+    }
+
+    function applyConfigToUI(){
+      document.getElementById('nInput').value=currentN;
+      document.getElementById('mirrorToggle').checked=mirror;
+      document.getElementById('leftHalfToggle').checked=showLeftHalf;
+      document.getElementById('rightHalfToggle').checked=showRightHalf;
+      document.getElementById('lowerHalfToggle').checked=showLowerHalf;
+      document.getElementById('upperHalfToggle').checked=showUpperHalf;
+      document.body.style.background=darkMode?'#0d0d0d':'#f5f5f5';
+      document.getElementById('controls').style.background=darkMode?'#101010':'#fafafa';
+      document.getElementById('controls').style.color=darkMode?'#e0e0e0':'#111111';
+    }
+
+    function createCheckboxes(){
+      const container=document.getElementById('seqCheckboxes');
+      container.innerHTML='';
+      for(const name of Object.keys(seqDefs)){
+        const row=document.createElement('div');
+        row.className='seq-row';
+
+        const checkbox=document.createElement('input');
+        checkbox.type='checkbox';
+        checkbox.checked=selected[name];
+        checkbox.addEventListener('change',()=>{ selected[name]=checkbox.checked; render(); });
+
+        const label=document.createElement('span');
+        label.textContent=name;
+        label.style.flex='1';
+
+        const colorInput=document.createElement('input');
+        colorInput.type='color';
+        colorInput.value=appearance[name].color;
+        colorInput.addEventListener('input',e=>{ appearance[name].color=e.target.value; render(); });
+
+        const styleSelect=document.createElement('select');
+        ['solid','dash','dot'].forEach(s=>{
+          const opt=document.createElement('option');
+          opt.value=s; opt.textContent=s;
+          if(s===appearance[name].dash) opt.selected=true;
+          styleSelect.appendChild(opt);
+        });
+        styleSelect.addEventListener('change',e=>{ appearance[name].dash=e.target.value; render(); });
+
+        row.appendChild(checkbox);
+        row.appendChild(label);
+        row.appendChild(colorInput);
+        row.appendChild(styleSelect);
+        container.appendChild(row);
+      }
+    }
+
+    function exportConfig(){
+      const blob=new Blob([JSON.stringify(getConfig(),null,2)], {type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download='bilateral_fibonacci_config.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importConfig(file){
+      const reader=new FileReader();
+      reader.onload=()=>{
+        try {
+          const c=JSON.parse(reader.result);
+          Object.assign({currentN,rotationDeg,symlog,mirror,darkMode,flipX,flipY,showLeftHalf,showRightHalf,showLowerHalf,showUpperHalf,selected,appearance}, c);
+          applyConfigToUI();
+          createCheckboxes();
+          render();
+        } catch(e) {
+          alert('Could not read config file.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function initEvents(){
+      const nInput=document.getElementById('nInput');
+      const applyN=()=>{ const val=parseInt(nInput.value,10); if(val>=1&&val<=30){ currentN=val; render(); } };
+      nInput.addEventListener('change',applyN);
+      document.getElementById('updateBtn').addEventListener('click',applyN);
+
+      document.getElementById('mirrorToggle').addEventListener('change',e=>{ mirror=e.target.checked; render(); });
+      document.getElementById('leftHalfToggle').addEventListener('change',e=>{ showLeftHalf=e.target.checked; render(); });
+      document.getElementById('rightHalfToggle').addEventListener('change',e=>{ showRightHalf=e.target.checked; render(); });
+      document.getElementById('lowerHalfToggle').addEventListener('change',e=>{ showLowerHalf=e.target.checked; render(); });
+      document.getElementById('upperHalfToggle').addEventListener('change',e=>{ showUpperHalf=e.target.checked; render(); });
+
+      document.getElementById('rotateBtn').addEventListener('click',()=>{ rotationDeg=(rotationDeg+90)%360; render(); });
+      document.getElementById('flipXBtn').addEventListener('click',()=>{ flipX=!flipX; render(); });
+      document.getElementById('flipYBtn').addEventListener('click',()=>{ flipY=!flipY; render(); });
+      document.getElementById('symlogBtn').addEventListener('click',()=>{ symlog=!symlog; render(); });
+
+      document.getElementById('themeBtn').addEventListener('click',()=>{
+        darkMode=!darkMode;
+        document.body.style.background=darkMode?'#0d0d0d':'#f5f5f5';
+        document.getElementById('controls').style.background=darkMode?'#101010':'#fafafa';
+        document.getElementById('controls').style.color=darkMode?'#e0e0e0':'#111111';
+        render();
+      });
+
+      document.getElementById('downloadBtn').addEventListener('click',()=>{
+        Plotly.downloadImage('graph',{format:'png',width:1200,height:700,filename:`bilateral_fibonacci_n${currentN}`});
+      });
+
+      document.getElementById('exportBtn').addEventListener('click',exportConfig);
+      document.getElementById('importBtn').addEventListener('click',()=>{
+        document.getElementById('importFile').click();
+      });
+      document.getElementById('importFile').addEventListener('change',e=>{
+        if(e.target.files && e.target.files[0]){
+          importConfig(e.target.files[0]);
+          e.target.value='';
+        }
+      });
+    }
+
+    loadState();
+    applyConfigToUI();
+    createCheckboxes();
+    initEvents();
+    render();
+  </script>
+</body>
+</html>
