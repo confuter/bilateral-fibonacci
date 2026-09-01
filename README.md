@@ -2,6 +2,13 @@
 
 Interactive browser tool for exploring the bilateral Fibonacci sequence and its derived cumulative, folded, braided, pair‑fold, and pair‑braid forms.
 
+## Live version
+
+Open the tool here:
+
+[https://confuter.github.io/bilateral-fibonacci/interactive_bilateral_fibonacci.html](https://confuter.github.io/bilateral-fibonacci/interactive_bilateral_fibonacci.html)
+
+
 ## Open
 
 Download or clone the repository, then open:
