@@ -8,6 +8,7 @@ Open the tool here:
 
 [https://confuter.github.io/bilateral-fibonacci/interactive_bilateral_fibonacci.html](https://confuter.github.io/bilateral-fibonacci/interactive_bilateral_fibonacci.html)
 
+![Bilateral Fibonacci Overlay](screenshot.png)
 
 ## Open
 
