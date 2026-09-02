@@ -44,7 +44,21 @@
     <label><input type="checkbox" id="mirrorToggle"> Show y‑mirrors</label>
     <label>Mirror brightness <input type="range" id="mirrorOpacity" min="0.1" max="1" step="0.05" value="0.35"></label>
     <label><input type="checkbox" id="gridToggle" checked> Show grid</label>
-    <label>Download size
+   
+    <div class="button-row">
+
+      <button id="symlogBtn">Symlog</button>
+</div>
+    <div class="button-row">
+
+      <button id="rotateBtn">Rotate 90°</button>
+      <button id="flipXBtn">Flip X</button>
+      <button id="flipYBtn">Flip Y</button>
+</div>
+  <h2>Save</h2>
+    <div class="button-row">
+ <label>Download size
+
 <select id="imageSizeSelect">
   <option value="screen">Current screen</option>
   <option value="1200x700">1200 × 700 (12:7)</option>
@@ -58,18 +72,19 @@
   <option value="4000x2250">4000 × 2250 (16:9)</option>
 </select>
     </label>
+   <input type="file" id="importFile" accept=".json" style="display:none">
+      <button id="downloadBtn">Download PNG</button>
+
+    </div>
+
+        <h2>Settings</h2>
     <div class="button-row">
-      <button id="rotateBtn">Rotate 90°</button>
-      <button id="flipXBtn">Flip X</button>
-      <button id="flipYBtn">Flip Y</button>
-      <button id="symlogBtn">Symlog</button>
       <button id="themeBtn">Dark / Light</button>
       <button id="exportBtn">Export JSON</button>
       <button id="importBtn">Import JSON</button>
-      <input type="file" id="importFile" accept=".json" style="display:none">
-      <button id="downloadBtn">Download PNG</button>
+</div>
       <button id="updateBtn">Update</button>
-    </div>
+   
     <div class="note">Click legend items to show/hide lines. Hover for values. Double-click plot or use home icon to reset zoom.</div>
   </div>
   <div id="graph"></div>
