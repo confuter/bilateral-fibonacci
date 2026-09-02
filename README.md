@@ -17,6 +17,8 @@ interactive_bilateral_fibonacci.html
 
 No server or build step is required. The page uses the Plotly CDN, so an internet connection is needed.
 
+Current version: 1.1.0
+
 ## Features
 - Change the number of terms `n` on each side of zero
 - Show or hide individual sequences
@@ -29,8 +31,9 @@ No server or build step is required. The page uses the Plotly CDN, so an interne
 - Change each sequence colour
 - Change each sequence between solid, dashed, and dotted lines
 - Export and import configuration as JSON
-- Download the current view as PNG
+- Download the current view as PNG in several sizes
 - Zoom, pan, and reset the view
+- Toggle grid visibility
 
 ## Sequences
 The tool includes the following named sequences:
