@@ -17,7 +17,7 @@ interactive_bilateral_fibonacci.html
 
 No server or build step is required. The page uses the Plotly CDN, so an internet connection is needed.
 
-Current version: 1.1.0
+Current version: 1.1.1
 
 ## Features
 - Change the number of terms `n` on each side of zero
