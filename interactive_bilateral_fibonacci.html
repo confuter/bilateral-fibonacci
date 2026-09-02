@@ -2,13 +2,15 @@
 <html lang="en-GB">
 <head>
 <meta charset="UTF-8">
+<meta name="version" content="1.1.0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Interactive tool for exploring the bilateral Fibonacci sequence and its cumulative, folded, braided, pair-fold, and pair-braid forms.">
 <title>Bilateral Fibonacci Sequence Overlay</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌀</text></svg>">
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
   body { margin:0; background:#0d0d0d; color:#e0e0e0; font-family:system-ui,sans-serif; display:flex; min-height:100vh; }
-  #controls { width:380px; padding:20px; background:#101010; border-right:1px solid #222; overflow-y:auto; height:100vh; box-sizing:border-box; }
+  #controls { width:400px; padding:20px; background:#101010; border-right:1px solid #222; overflow-y:auto; height:100vh; box-sizing:border-box; }
   #controls h1 { font-size:1.2rem; margin:0 0 16px; color:#fff; }
   #controls h2 { font-size:1rem; margin:16px 0 8px; color:#bbb; border-bottom:1px solid #222; padding-bottom:4px; }
   #controls label { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:0.9rem; cursor:pointer; }
@@ -22,12 +24,15 @@
   .seq-row { display:flex; align-items:center; gap:8px; margin:6px 0; }
   .seq-row input[type="color"] { width:36px; height:24px; padding:0; border:none; background:none; cursor:pointer; }
   .seq-row select { background:#1a1a1a; color:#e0e0e0; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem; }
+  input[type="range"] { width:100px; }
+  select { background:#1a1a1a; color:#e0e0e0; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.85rem; }
 </style>
 </head>
 <body>
   <div id="controls">
     <h1>Bilateral Fibonacci Overlay</h1>
-    <label>n (terms each side) <input type="number" id="nInput" min="1" max="30" value="8"></label>
+    <p style="margin:0 0 16px; color:#777;">Version 1.1.0</p>
+    <label>n (terms each side) <input type="number" id="nInput" min="1" max="100" value="8"></label>
     <h2>Sequences</h2>
     <div id="seqCheckboxes"></div>
     <h2>Halves</h2>
@@ -36,30 +41,34 @@
     <label><input type="checkbox" id="lowerHalfToggle" checked> Show lower half (value &lt; 0)</label>
     <label><input type="checkbox" id="upperHalfToggle" checked> Show upper half (value &gt; 0)</label>
     <h2>View</h2>
-    <label><input type="checkbox" id="mirrorToggle"> Show y-mirrors</label>
+    <label><input type="checkbox" id="mirrorToggle"> Show y‑mirrors</label>
+    <label>Mirror brightness <input type="range" id="mirrorOpacity" min="0.1" max="1" step="0.05" value="0.35"></label>
+    <label><input type="checkbox" id="gridToggle" checked> Show grid</label>
+    <label>Download size
+<select id="imageSizeSelect">
+  <option value="screen">Current screen</option>
+  <option value="1200x700">1200 × 700 (12:7)</option>
+  <option value="1600x900">1600 × 900 (16:9)</option>
+  <option value="1920x1080">1920 × 1080 (16:9)</option>
+  <option value="2400x1350">2400 × 1350 (16:9)</option>
+  <option value="1600x1200">1600 × 1200 (4:3)</option>
+  <option value="2000x1500">2000 × 1500 (4:3)</option>
+  <option value="1080x1920">1080 × 1920 (9:16, portrait)</option>
+  <option value="1200x1600">1200 × 1600 (3:4, portrait)</option>
+  <option value="4000x2250">4000 × 2250 (16:9)</option>
+</select>
+    </label>
     <div class="button-row">
-      <button id="symlogBtn">Symlog</button>
-    </BR>   <BR>
       <button id="rotateBtn">Rotate 90°</button>
       <button id="flipXBtn">Flip X</button>
       <button id="flipYBtn">Flip Y</button>
-    
+      <button id="symlogBtn">Symlog</button>
+      <button id="themeBtn">Dark / Light</button>
+      <button id="exportBtn">Export JSON</button>
+      <button id="importBtn">Import JSON</button>
       <input type="file" id="importFile" accept=".json" style="display:none">
       <button id="downloadBtn">Download PNG</button>
       <button id="updateBtn">Update</button>
-    </div>
-
-
-
-        <h2>Settings</h2>
-    <div class="button-row">
-  <button id="themeBtn">Dark / Light</button>
-
-    </div>
-        <h2>Save/Load</h2>
-    <div class="button-row">
-      <button id="exportBtn">Export JSON</button>
-      <button id="importBtn">Import JSON</button>
     </div>
     <div class="note">Click legend items to show/hide lines. Hover for values. Double-click plot or use home icon to reset zoom.</div>
   </div>
@@ -92,6 +101,7 @@
 
     let currentN=8, rotationDeg=0, symlog=false, mirror=false, darkMode=true, flipX=false, flipY=false;
     let showLeftHalf=true, showRightHalf=true, showLowerHalf=true, showUpperHalf=true;
+    let mirrorOpacity=0.35, showGrid=true;
 
     const seqDefs={
       '+0±':{base:basePlus0,color:'#e6a817',dash:'solid'},
@@ -115,6 +125,7 @@
     }
 
     function symlogValue(v){ if(Number.isNaN(v))return NaN; if(v===0)return 0; return Math.sign(v)*Math.log10(1+Math.abs(v)); }
+
     function getSymlogTicks(n){
       const fibs=new Set(); let a=0,b=1;
       while(a<=fib(n)){ fibs.add(a); [a,b]=[b,a+b]; }
@@ -122,6 +133,40 @@
       const unique=[...new Set(ticks)].filter(v=>Math.abs(v)<=fib(n));
       const sorted=unique.sort((a,b)=>a-b);
       return { tickvals:sorted.map(v=>symlogValue(v)), ticktext:sorted.map(v=>String(v)) };
+    }
+
+    function niceStep(maxVal, targetTicks=12) {
+      if (maxVal <= 0) return 1;
+      const rawStep = maxVal / targetTicks;
+      const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+      const residual = rawStep / pow;
+      let nice;
+      if (residual < 1.5) nice = 1;
+      else if (residual < 3.5) nice = 2;
+      else if (residual < 7.5) nice = 5;
+      else nice = 10;
+      return nice * pow;
+    }
+
+    function getLinearTicks(maxVal, includeZero=true) {
+      const step = niceStep(maxVal);
+      let ticks = [];
+      for (let v = -Math.floor(maxVal/step)*step; v <= maxVal + 0.001; v += step) {
+        if (Math.abs(v) < step * 0.001) v = 0;
+        ticks.push(parseFloat(v.toFixed(10)));
+      }
+      if (!includeZero) ticks = ticks.filter(v => v !== 0);
+      if (ticks.length === 0) ticks = [0];
+      return { tickvals: ticks, ticktext: ticks.map(v => String(v)) };
+    }
+
+    function getIndexTicks(N) {
+      const step = N <= 8 ? 1 : N <= 16 ? 2 : N <= 30 ? 5 : N <= 60 ? 10 : 20;
+      let ticks = [];
+      for (let k = -Math.floor(N/step)*step; k <= N; k += step) {
+        ticks.push(k);
+      }
+      return ticks;
     }
 
     function buildData(){
@@ -181,7 +226,7 @@
             mode:'lines',
             name:useMirror?`${name} mirror`:name,
             line:{color:ap.color,width:useMirror?1.4:2,dash:ap.dash},
-            opacity:useMirror?0.35:1,
+            opacity:useMirror?mirrorOpacity:1,
             legendgroup:name,
             showlegend:!useMirror,
             hovertemplate:`${name}<br>index=%{x}<br>value=%{y}<extra></extra>`,
@@ -213,18 +258,55 @@
         title:`Bilateral Fibonacci Sequence Overlay, n=${currentN}`,
         hovermode:'closest',
         legend:{orientation:'v',yanchor:'top',y:1,xanchor:'left',x:1.02},
-        xaxis:{title:getXAxisTitle(),type:'linear',gridcolor:dark.gridcolor,zerolinecolor:dark.zerolinecolor,linecolor:dark.linecolor,autorange:true},
-        yaxis:{title:getYAxisTitle(),type:'linear',gridcolor:dark.gridcolor,zerolinecolor:dark.zerolinecolor,linecolor:dark.linecolor,autorange:true},
+        xaxis:{
+          title:getXAxisTitle(),
+          type:'linear',
+          gridcolor:dark.gridcolor,
+          zerolinecolor:dark.zerolinecolor,
+          linecolor:dark.linecolor,
+          showgrid:showGrid,
+          autorange:true
+        },
+        yaxis:{
+          title:getYAxisTitle(),
+          type:'linear',
+          gridcolor:dark.gridcolor,
+          zerolinecolor:dark.zerolinecolor,
+          linecolor:dark.linecolor,
+          showgrid:showGrid,
+          autorange:true
+        },
         margin:{l:60,r:80,t:50,b:50}
       };
+
       if(rotationDeg===0||rotationDeg===180){
-        if(!symlog){ layout.xaxis.dtick=1; layout.yaxis.dtick=1; }
-        else { layout.xaxis.dtick=1; if(tickInfo){ layout.yaxis.tickvals=tickInfo.tickvals; layout.yaxis.ticktext=tickInfo.ticktext; } }
+        if(symlog){
+          if(tickInfo){ layout.yaxis.tickvals=tickInfo.tickvals; layout.yaxis.ticktext=tickInfo.ticktext; }
+        } else {
+          // Use nice index ticks and value ticks
+          const indexTicks = getIndexTicks(currentN);
+          layout.xaxis.tickvals = indexTicks;
+          layout.xaxis.ticktext = indexTicks.map(String);
+          const maxVal = maxFiniteAbs(data, 'y');
+          const valueTicks = getLinearTicks(maxVal);
+          layout.yaxis.tickvals = valueTicks.tickvals;
+          layout.yaxis.ticktext = valueTicks.ticktext;
+        }
       } else {
-        if(!symlog){ layout.yaxis.dtick=1; layout.xaxis.dtick=1; }
-        else { layout.yaxis.dtick=1; if(tickInfo){ layout.xaxis.tickvals=tickInfo.tickvals; layout.xaxis.ticktext=tickInfo.ticktext; } }
+        if(symlog){
+          if(tickInfo){ layout.xaxis.tickvals=tickInfo.tickvals; layout.xaxis.ticktext=tickInfo.ticktext; }
+        } else {
+          const maxVal = maxFiniteAbs(data, 'x');
+          const valueTicks = getLinearTicks(maxVal);
+          layout.xaxis.tickvals = valueTicks.tickvals;
+          layout.xaxis.ticktext = valueTicks.ticktext;
+          const indexTicks = getIndexTicks(currentN);
+          layout.yaxis.tickvals = indexTicks;
+          layout.yaxis.ticktext = indexTicks.map(String);
+        }
       }
 
+      // Compute visible ranges from finite points
       let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,hasX=false,hasY=false;
       for(const trace of data){
         for(let i=0;i<trace.x.length;i++){
@@ -236,6 +318,17 @@
       if(hasX){ const padX=Math.max((maxX-minX)*0.05,0.5); layout.xaxis.range=[minX-padX,maxX+padX]; }
       if(hasY){ const padY=Math.max((maxY-minY)*0.05,0.5); layout.yaxis.range=[minY-padY,maxY+padY]; }
       return layout;
+    }
+
+    function maxFiniteAbs(traces, axis) {
+      let max = 0;
+      for (const trace of traces) {
+        const arr = axis === 'y' ? trace.y : trace.x;
+        for (const v of arr) {
+          if (typeof v === 'number' && !Number.isNaN(v) && Math.abs(v) > max) max = Math.abs(v);
+        }
+      }
+      return max || 1;
     }
 
     function render(){
@@ -259,7 +352,9 @@
         showLowerHalf,
         showUpperHalf,
         selected,
-        appearance
+        appearance,
+        mirrorOpacity,
+        showGrid
       };
     }
 
@@ -272,13 +367,15 @@
         const raw=localStorage.getItem('bilateralFibConfig');
         if(!raw) return;
         const c=JSON.parse(raw);
-        Object.assign({currentN,rotationDeg,symlog,mirror,darkMode,flipX,flipY,showLeftHalf,showRightHalf,showLowerHalf,showUpperHalf,selected,appearance}, c);
+        Object.assign({currentN,rotationDeg,symlog,mirror,darkMode,flipX,flipY,showLeftHalf,showRightHalf,showLowerHalf,showUpperHalf,selected,appearance,mirrorOpacity,showGrid}, c);
       } catch(e) {}
     }
 
     function applyConfigToUI(){
       document.getElementById('nInput').value=currentN;
       document.getElementById('mirrorToggle').checked=mirror;
+      document.getElementById('gridToggle').checked=showGrid;
+      document.getElementById('mirrorOpacity').value=mirrorOpacity;
       document.getElementById('leftHalfToggle').checked=showLeftHalf;
       document.getElementById('rightHalfToggle').checked=showRightHalf;
       document.getElementById('lowerHalfToggle').checked=showLowerHalf;
@@ -341,7 +438,7 @@
       reader.onload=()=>{
         try {
           const c=JSON.parse(reader.result);
-          Object.assign({currentN,rotationDeg,symlog,mirror,darkMode,flipX,flipY,showLeftHalf,showRightHalf,showLowerHalf,showUpperHalf,selected,appearance}, c);
+          Object.assign({currentN,rotationDeg,symlog,mirror,darkMode,flipX,flipY,showLeftHalf,showRightHalf,showLowerHalf,showUpperHalf,selected,appearance,mirrorOpacity,showGrid}, c);
           applyConfigToUI();
           createCheckboxes();
           render();
@@ -352,13 +449,26 @@
       reader.readAsText(file);
     }
 
+    function getDownloadDimensions() {
+      const select = document.getElementById('imageSizeSelect');
+      const val = select.value;
+      if (val === 'screen') {
+        const graphEl = document.getElementById('graph');
+        return { width: graphEl.clientWidth, height: graphEl.clientHeight };
+      }
+      const [width, height] = val.split('x').map(Number);
+      return { width, height };
+    }
+
     function initEvents(){
       const nInput=document.getElementById('nInput');
-      const applyN=()=>{ const val=parseInt(nInput.value,10); if(val>=1&&val<=30){ currentN=val; render(); } };
+      const applyN=()=>{ const val=parseInt(nInput.value,10); if(val>=1&&val<=100){ currentN=val; render(); } };
       nInput.addEventListener('change',applyN);
       document.getElementById('updateBtn').addEventListener('click',applyN);
 
       document.getElementById('mirrorToggle').addEventListener('change',e=>{ mirror=e.target.checked; render(); });
+      document.getElementById('gridToggle').addEventListener('change',e=>{ showGrid=e.target.checked; render(); });
+      document.getElementById('mirrorOpacity').addEventListener('input',e=>{ mirrorOpacity=parseFloat(e.target.value); render(); });
       document.getElementById('leftHalfToggle').addEventListener('change',e=>{ showLeftHalf=e.target.checked; render(); });
       document.getElementById('rightHalfToggle').addEventListener('change',e=>{ showRightHalf=e.target.checked; render(); });
       document.getElementById('lowerHalfToggle').addEventListener('change',e=>{ showLowerHalf=e.target.checked; render(); });
@@ -378,7 +488,8 @@
       });
 
       document.getElementById('downloadBtn').addEventListener('click',()=>{
-        Plotly.downloadImage('graph',{format:'png',width:1200,height:700,filename:`bilateral_fibonacci_n${currentN}`});
+        const { width, height } = getDownloadDimensions();
+        Plotly.downloadImage('graph',{format:'png',width,height,filename:`bilateral_fibonacci_n${currentN}_${width}x${height}`});
       });
 
       document.getElementById('exportBtn').addEventListener('click',exportConfig);
