@@ -1,5 +1,8 @@
-# bilateral-fibonacci
+# Bilateral Fibonacci Overlay
+
 Interactive browser tool for exploring the bilateral Fibonacci sequence and its derived cumulative, folded, braided, pair‑fold, and pair‑braid forms.
+
+Repository: `bilateral-fibonacci`
 
 ## Live version
 Open the tool here:
