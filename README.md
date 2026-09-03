@@ -17,33 +17,39 @@ interactive_bilateral_fibonacci.html
 
 No server or build step is required. The page uses the Plotly CDN, so an internet connection is needed.
 
-Current version: 1.1.1
-
+Current version: 1.2.0
 ## Features
-- Change the number of terms `n` on each side of zero
+
+- Change the number of terms `n` on each side of zero with input or `+` / `−` buttons
+- Keep `x=0` and `y=0` centred when changing `n`
 - Show or hide individual sequences
 - Show or hide the left, right, upper, and lower halves of the graph
 - Show mirrored values for every sequence
+- Adjust mirror brightness
 - Rotate the graph through 0°, 90°, 180°, and 270°
 - Flip the x-axis or y-axis
 - Toggle linear and symlog views
 - Toggle dark and light backgrounds
-- Change each sequence colour
-- Change each sequence between solid, dashed, and dotted lines
-- Export and import configuration as JSON
-- Download the current view as PNG in several sizes
-- Zoom, pan, and reset the view
 - Toggle grid visibility
+- Change each sequence colour, line style, and opacity
+- Export and import configuration as JSON
+- Download the current view as PNG in several sizes, including current screen
+- Reset all settings to defaults
+- Settings persist automatically across page refreshes
+- Zoom, pan, and reset the view
 
 ## Sequences
+
 The tool includes the following named sequences:
 
 - `+0±`
 - `−0∓`
 - `Σ(+0±)`
 - `Σ(−0∓)`
-- `Fib`
-- `ΣFib`
+- `Fib(±0+)`
+- `ΣFib(±0+)`
+- `NegFib(∓0−)`
+- `ΣNegFib(∓0−)`
 - `folded₀`
 - `Σfold`
 - `braided₀`
